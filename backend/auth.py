@@ -16,12 +16,12 @@ router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+def verify_password(password, hashed):
+    return pwd_context.verify(password[:72], hashed)
 
 
-def verify_password(password: str, hashed: str) -> bool:
-    return pwd_context.verify(password, hashed)
+def hash_password(password):
+    return pwd_context.hash(password[:72])
 
 
 def create_token(data: dict, expires_delta: timedelta, token_type: str) -> str:
@@ -73,7 +73,8 @@ async def signup(user: SignupRequest):
             "created_at": datetime.utcnow(),
         })
     except DuplicateKeyError as exc:
-        raise HTTPException(status_code=400, detail="User already exists") from exc
+        raise HTTPException(
+            status_code=400, detail="User already exists") from exc
 
     logger.info("New user signed up: %s", email)
     return success_response("Signup successful")
@@ -87,7 +88,8 @@ async def login(user: LoginRequest):
     db_user = await db.users.find_one({"email": email})
 
     if not db_user or not verify_password(password, db_user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(
+            status_code=401, detail="Invalid email or password")
 
     token_data = {"email": email, "sub": email}
 
